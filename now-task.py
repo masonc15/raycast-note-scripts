@@ -116,7 +116,12 @@ def get_topmost_now_task(note_path: str) -> str:
 
 
 if __name__ == "__main__":
-    task_name = " ".join(sys.argv[1:]).strip()
+    task_name = sys.argv[1].strip() if len(sys.argv) > 1 else ""
+    task_duration = (
+        int(sys.argv[2].strip())
+        if len(sys.argv) > 2 and sys.argv[2].strip().isdigit()
+        else None
+    )
     daily_note_path = get_daily_note_path()
 
     if task_name:
