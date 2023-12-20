@@ -42,3 +42,11 @@ if os.path.exists(LOG_FILE_PATH):
     else:
         # Prepend the new date, entry, and three blank lines to the log file
         content = header + formatted_entry + "\n\n\n" + content
+
+    # Write the updated content back to the log file
+    with open(LOG_FILE_PATH, "w") as file:
+        file.write(content)
+else:
+    # Create a new log file with the entry
+    with open(LOG_FILE_PATH, "w") as file:
+        file.write(header + formatted_entry + "\n\n\n")
