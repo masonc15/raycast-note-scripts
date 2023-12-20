@@ -115,6 +115,42 @@ def get_topmost_now_task(note_path: str) -> str:
         ) from e
 
 
+def is_timerpro_running() -> bool:
+    """
+    Check if AS TimerPRO.app is already running.
+
+    Returns:
+        bool: True if the app is running, False otherwise.
+    """
+    result = subprocess.run(
+        ["pgrep", "-f", "AS TimerPRO.app"], stdout=subprocess.PIPE, text=True
+    )
+    return result.stdout != ""
+
+
+def quit_timerpro():
+    """
+    Quit AS TimerPRO.app if it's running.
+    """
+    subprocess.run(["pkill", "-f", "AS TimerPRO.app"])
+
+
+def start_timerpro_timer(duration_minutes: int):
+    """
+    Start a countdown timer in AS TimerPRO.app for the given duration in minutes.
+
+    Args:
+        duration_minutes (int): The duration of the timer in minutes.
+    """
+    hours = duration_minutes // 60
+    minutes = duration_minutes % 60
+    timer_command = f"{{Timer#0:H{hours:02d}M{minutes:02d}S00 ModeTimer Start}}"
+    subprocess.run(
+        ["/Applications/AS TimerPRO.app/Contents/MacOS/AS TimerPRO", timer_command],
+        check=True,
+    )
+
+
 if __name__ == "__main__":
     task_name = sys.argv[1].strip() if len(sys.argv) > 1 else ""
     task_duration = (
