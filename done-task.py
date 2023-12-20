@@ -112,11 +112,12 @@ if __name__ == "__main__":
     task_name = " ".join(sys.argv[1:]).strip()
     daily_note_path = get_daily_note_path()
 
+    remove_one_thing_task()
+
     if not task_name:
         try:
             task_name, task_line_index = get_topmost_task_from_now(daily_note_path)
             remove_task_from_now(daily_note_path, task_line_index)
-            remove_one_thing_task()
             append_completed_task_to_daily_note(task_name, daily_note_path)
             print(f"Moved '{task_name}' from 'now' to 'done'.")
         except ValueError as e:
