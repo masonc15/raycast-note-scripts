@@ -39,9 +39,11 @@ if os.path.exists(LOG_FILE_PATH):
     if header in content:
         # Find the index of today's date and insert the entry
         content = content.replace(header, header + formatted_entry + "\n\n", 1)
+        print(f"Entry added at {current_time} under today's date.")
     else:
         # Prepend the new date, entry, and three blank lines to the log file
         content = header + formatted_entry + "\n\n\n" + content
+        print(f"New date ({current_date}) added to log with entry at {current_time}.")
 
     # Write the updated content back to the log file
     with open(LOG_FILE_PATH, "w") as file:
@@ -50,3 +52,4 @@ else:
     # Create a new log file with the entry
     with open(LOG_FILE_PATH, "w") as file:
         file.write(header + formatted_entry + "\n\n\n")
+    print(f"New log file created with first entry at {current_time}.")
