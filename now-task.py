@@ -144,9 +144,10 @@ def start_timerpro_timer(duration_minutes: int):
     """
     hours, minutes = divmod(duration_minutes, 60)
     timer_command = f"{{Timer#0:H{hours:02d}M{minutes:02d}S00 ModeTimer Start}}"
-    subprocess.run(
+    subprocess.Popen(
         ["/Applications/AS TimerPRO.app/Contents/MacOS/AS TimerPRO", timer_command],
-        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
 
 
