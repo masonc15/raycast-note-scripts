@@ -21,6 +21,13 @@ import subprocess
 
 
 def get_daily_note_path():
+    """
+    Returns the path to the daily note file based on the current date.
+
+    Returns:
+        str: The path to the daily note file.
+
+    """
     daily_note_directory = "/Users/colin/Dropbox (Maestral)/Daily Notes"
     current_date = datetime.now().strftime("%m-%d-%y")
     daily_note_filename = f"{current_date}.txt"
@@ -45,6 +52,19 @@ def append_completed_task_to_daily_note(task_name: str, note_path: str):
 
 
 def get_topmost_task_from_now(note_path: str):
+    """
+    Retrieves the topmost task from the 'now' section of the daily note file.
+
+    Args:
+        note_path (str): The path to the daily note file.
+
+    Returns:
+        tuple: A tuple containing the task name and its line index.
+
+    Raises:
+        ValueError: If the 'now' section or tasks are not found in the daily note file.
+
+    """
     with open(note_path, "r") as file:
         content = file.readlines()
         now_section_index = next(
@@ -64,6 +84,14 @@ def get_topmost_task_from_now(note_path: str):
 
 
 def remove_task_from_now(note_path: str, task_line_index: int):
+    """
+    Removes a task from the 'now' section of the daily note file.
+
+    Args:
+        note_path (str): The path to the daily note file.
+        task_line_index (int): The index of the task line to be removed.
+
+    """
     with open(note_path, "r+") as file:
         content = file.readlines()
         content.pop(task_line_index)
