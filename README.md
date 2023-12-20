@@ -10,7 +10,7 @@ Adds completed tasks along with a timestamp to the "done" section of the daily n
 
 ### `now-task.py`
 
-Adds a task to the "now" section of the current day's daily note. If no task is provided, it retrieves the topmost task from the "now" section and sets it in the One Thing menubar app.
+Adds a task to the "now" section of the current day's daily note and optionally starts a timer for the task using [AS TimerPRO](https://www.alinofsoftware.ch/apps/products-timerpro/index.html). If no task is provided, it retrieves the topmost task from the "now" section and sets it in the One Thing menubar app. If a duration is provided, it will quit any running AS TimerPRO timer and start a new countdown for the specified duration in minutes.
 
 ### `later-task.py`
 
