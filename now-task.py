@@ -8,6 +8,7 @@
 # Optional parameters:
 # @raycast.icon 📝
 # @raycast.argument1 { "type": "text", "placeholder": "task", "optional": true }
+# @raycast.argument2 { "type": "text", "placeholder": "duration (minutes)", "optional": true }
 
 # Documentation:
 # @raycast.description Adds a task to the "now" section of the current day's daily note.
