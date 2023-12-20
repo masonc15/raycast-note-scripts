@@ -7,7 +7,7 @@
 
 # Optional parameters:
 # @raycast.icon 📓
-# @raycast.argument1 { "type": "text", "placeholder": "thought log entry" }
+# @raycast.argument1 { "type": "text", "placeholder": "journal entry" }
 
 # Documentation:
 # @raycast.description Adds a timestamped entry to thought log text file.
