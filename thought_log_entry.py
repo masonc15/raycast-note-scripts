@@ -34,3 +34,8 @@ formatted_entry = f"{current_time} - {entry}\n"
 if os.path.exists(LOG_FILE_PATH):
     with open(LOG_FILE_PATH, "r") as file:
         content = file.read()
+
+    # Check if today's date is already in the log file
+    if header in content:
+        # Find the index of today's date and insert the entry
+        content = content.replace(header, header + formatted_entry + "\n\n", 1)
