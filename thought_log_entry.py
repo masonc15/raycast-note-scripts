@@ -29,3 +29,8 @@ header = f"{current_date}\n---\n"
 # Get the entry from the argument
 entry = sys.argv[1].strip()
 formatted_entry = f"{current_time} - {entry}\n"
+
+# Read the existing log file
+if os.path.exists(LOG_FILE_PATH):
+    with open(LOG_FILE_PATH, "r") as file:
+        content = file.read()
