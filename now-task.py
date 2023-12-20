@@ -163,10 +163,18 @@ if __name__ == "__main__":
     if task_name:
         add_to_now_section(task_name, daily_note_path)
         print(f"Task '{task_name}' added to 'now' section of daily note.")
+
+        if task_duration is not None:
+            if is_timerpro_running():
+                quit_timerpro()
+            start_timerpro_timer(task_duration)
+            print(f"Timer set for {task_duration} minutes.")
+
     else:
         try:
             task_name = get_topmost_now_task(daily_note_path)
         except (ValueError, FileNotFoundError) as e:
             print(e)
             sys.exit(1)
+
     set_one_thing_task(task_name)
