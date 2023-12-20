@@ -85,7 +85,7 @@ def get_topmost_task_from_now(note_path: str):
 
 def remove_task_from_now(note_path: str, task_line_index: int):
     """
-    Removes a task from the 'now' section of the daily note file.
+    Removes a task from the 'now' section of the daily note file and leaves a newline behind.
 
     Args:
         note_path (str): The path to the daily note file.
@@ -94,7 +94,7 @@ def remove_task_from_now(note_path: str, task_line_index: int):
     """
     with open(note_path, "r+") as file:
         content = file.readlines()
-        content.pop(task_line_index)
+        content[task_line_index] = "\n"  # Replace the task line with a newline
         file.seek(0)
         file.writelines(content)
         file.truncate()
