@@ -26,7 +26,7 @@ def get_daily_note_path():
     Returns:
         str: The path to the daily note file.
     """
-    daily_note_directory = os.getenv("DAILY_NOTE_DIRECTORY")
+    daily_note_directory = "/Users/colin/Dropbox (Maestral)/Daily Notes"
     current_date = datetime.now().strftime("%m-%d-%y")
     daily_note_filename = f"{current_date}.txt"
     return os.path.join(daily_note_directory, daily_note_filename)
