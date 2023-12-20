@@ -39,3 +39,6 @@ if os.path.exists(LOG_FILE_PATH):
     if header in content:
         # Find the index of today's date and insert the entry
         content = content.replace(header, header + formatted_entry + "\n\n", 1)
+    else:
+        # Prepend the new date, entry, and three blank lines to the log file
+        content = header + formatted_entry + "\n\n\n" + content
