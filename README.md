@@ -16,6 +16,10 @@ Adds a task to the "now" section of the current day's daily note and optionally 
 
 Adds a task to the "later" section of the current day's daily note. The task is followed by two newlines to separate it from subsequent tasks.
 
+### `thought_log_entry.py`
+
+Adds a timestamped entry to the thought log text file. The entry is prepended with the current time and followed by a newline. If the current date is not present in the log file, it adds a new date header before the entry.
+
 ## Usage
 
 Add the scripts to your Raycast script commands directory.
