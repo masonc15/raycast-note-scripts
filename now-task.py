@@ -106,9 +106,11 @@ def get_topmost_now_task(note_path: str) -> str:
             if now_section_index is None:
                 raise ValueError("Could not find 'now' section in daily note.")
             for task_line in content[now_section_index + 2 :]:
+                if task_line.strip().lower() == "later":  # Stop at 'later' section
+                    break
                 if task_line.strip():  # Found a non-empty line, which is our task
                     return task_line.strip()
-            raise ValueError("No tasks in 'now' section.")
+            return ""  # No tasks found in 'now' section
     except FileNotFoundError as e:
         raise FileNotFoundError(
             f"Daily note for today does not exist at {note_path}"
