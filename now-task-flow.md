@@ -12,8 +12,12 @@ graph TD
     D -->|No| H
     E -->|No| G
     B -->|No| I[Get topmost task from 'now' section of daily note]
-    I --> J{Check if task_name is found}
+    I --> J{Are any tasks present in 'now' section?}
     J -->|Yes| H
-    J -->|No| K[End with error]
-    H --> L[End]
+    J -->|No| K{Is there text in One Thing menubar?}
+    K -->|Yes| L[Clear One Thing menubar text]
+    K -->|No| M[Do nothing]
+    L --> N[End]
+    M --> N[End]
+    H --> N[End]
 ```
