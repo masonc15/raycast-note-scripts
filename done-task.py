@@ -75,7 +75,7 @@ def get_topmost_task_from_now(note_path: str):
             raise ValueError("Could not find 'now' section in daily note.")
 
         for i in range(now_section_index, len(content)):
-            if content[i].strip() == "":  # First empty line after 'now' section
+            if content[i].strip() == "later":  # First empty line after 'now' section
                 break
             if content[i].strip():  # Found a non-empty line, which is the topmost task
                 return content[i].strip(), i
