@@ -34,7 +34,8 @@ def get_daily_note_path():
 
 def add_to_later_section(task_name: str, note_path: str):
     """
-    Add the task to the 'later' section of the daily note file, followed by two newlines.
+    Add the task as the first item in the 'later' section of the daily note,
+    followed by a single blank line.
 
     Args:
         task_name (str): The name of the task to add.
@@ -49,10 +50,12 @@ def add_to_later_section(task_name: str, note_path: str):
         content = file.readlines()
         for i, line in enumerate(content):
             if line.strip().lower() == "later":
+                # Insert the new task immediately after the 'later' heading
+                # we increment by 2 to skip the '---' line and add a blank line
+                content.insert(i + 2, f"{task_name}\n\n")
                 later_section_found = True
-            elif later_section_found and line.strip().lower() == "done":
-                content.insert(i, f"{task_name}\n\n")
                 break
+
         if not later_section_found:
             raise ValueError("Could not find 'later' section in daily note.")
 
