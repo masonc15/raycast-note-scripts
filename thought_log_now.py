@@ -33,30 +33,63 @@ if os.path.exists(LOG_FILE_PATH):
 else:
     content = ""
 
-# Check if today's date is already in the log file
-if header in content:
-    # Find the index of today's date and insert the timestamp with two blank lines
-    content = content.replace(header, header + timestamp, 1)
-else:
-    # Prepend the new date and timestamp with two blank lines to the log file
-    content = header + timestamp + content
+import re
 
-# Write the updated content back to the log file
-with open(LOG_FILE_PATH, "w") as file:
-    file.write(content)
+# Flag to track if we should add a new timestamp
+should_add_timestamp = True
 
-###################
-## AS OF RIGHT HERE, THE TIMESTAMP IS READY TO GO (E.G. "4:55 PM -")
-###################
-
-# run shell command 'keyboardmaestro "Thought log entry"'
-subprocess.run(
-    [
-        "/usr/bin/osascript",
-        "-e",
-        'tell application "Keyboard Maestro Engine" to do script "Thought log entry"',
-    ]
+# Use regex to find today's date header (more flexible for whitespace)
+# Pattern matches: date, newline, dashes (with optional trailing spaces), newline
+date_header_pattern = re.compile(
+    r'^' + re.escape(current_date) + r'\n---\s*\n',
+    re.MULTILINE
 )
 
-# Open the thought log file in VS Code
-# subprocess.run(["open", "-a", "Visual Studio Code", LOG_FILE_PATH])
+# Check if today's date is already in the log file
+header_match = date_header_pattern.search(content)
+
+if header_match:
+    # Today's date already exists - insert timestamp right after the header
+    header_end = header_match.end()
+    remaining_content = content[header_end:]
+
+    # Check if there's already an empty timestamp (ends with "- " or "-  " with only whitespace after)
+    empty_timestamp_pattern = r'(\d{1,2}:\d{2} [AP]M\s*-\s*)\s*$'
+
+    # Get just the first line after the header (most recent timestamp)
+    first_line = remaining_content.split('\n')[0] if remaining_content else ""
+
+    if re.match(empty_timestamp_pattern, first_line.strip()):  # Check if first timestamp is empty
+        # Skip adding a new timestamp if the last one is empty
+        print("Skipping new timestamp - last entry is still empty")
+        should_add_timestamp = False
+    else:
+        # Insert the new timestamp right after the header
+        content = content[:header_end] + timestamp + remaining_content
+else:
+    # Today's date doesn't exist - prepend new date header and timestamp
+    content = header + timestamp + content
+
+# Only write and trigger KM if we're actually adding a timestamp
+if should_add_timestamp:
+    # Write the updated content back to the log file
+    with open(LOG_FILE_PATH, "w") as file:
+        file.write(content)
+
+    ###################
+    ## AS OF RIGHT HERE, THE TIMESTAMP IS READY TO GO (E.G. "4:55 PM -")
+    ###################
+
+    # run shell command 'keyboardmaestro "Thought log entry"'
+    subprocess.run(
+        [
+            "/usr/bin/osascript",
+            "-e",
+            'tell application "Keyboard Maestro Engine" to do script "Thought log entry"',
+        ]
+    )
+else:
+    # Still focus VS Code to show the empty timestamp, but don't add new one or trigger KM
+    print("Empty timestamp detected - focusing VS Code without adding new timestamp")
+    # Focus VS Code to bring attention to the empty timestamp
+    subprocess.run(["open", "-a", "Visual Studio Code", LOG_FILE_PATH])
