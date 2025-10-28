@@ -60,9 +60,15 @@ if header_match:
     first_line = remaining_content.split('\n')[0] if remaining_content else ""
 
     if re.match(empty_timestamp_pattern, first_line.strip()):  # Check if first timestamp is empty
-        # Skip adding a new timestamp if the last one is empty
-        print("Skipping new timestamp - last entry is still empty")
-        should_add_timestamp = False
+        # Delete the empty timestamp line and its 3 newlines, then add new timestamp
+        lines = remaining_content.split('\n', 4)  # Split into: [empty_timestamp, '', '', '', rest...]
+        if len(lines) >= 4:
+            # Rejoin without the first 4 elements (timestamp + 3 newlines)
+            remaining_content = '\n'.join(lines[4:]) if len(lines) > 4 else ''
+
+        # Insert the new timestamp right after the header
+        content = content[:header_end] + timestamp + remaining_content
+        print("Replaced empty timestamp with new one")
     else:
         # Insert the new timestamp right after the header
         content = content[:header_end] + timestamp + remaining_content
