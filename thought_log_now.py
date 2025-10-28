@@ -16,6 +16,7 @@
 import subprocess
 from datetime import datetime
 import os
+import re
 
 # Constants
 LOG_FILE_PATH = "/Users/colin/Dropbox (Maestral)/Daily Notes/thought log.txt"
@@ -32,11 +33,6 @@ if os.path.exists(LOG_FILE_PATH):
         content = file.read()
 else:
     content = ""
-
-import re
-
-# Flag to track if we should add a new timestamp
-should_add_timestamp = True
 
 # Use regex to find today's date header (more flexible for whitespace)
 # Pattern matches: date, newline, dashes (with optional trailing spaces), newline
@@ -79,26 +75,19 @@ else:
     # Today's date doesn't exist - prepend new date header and timestamp
     content = header + timestamp + content
 
-# Only write and trigger KM if we're actually adding a timestamp
-if should_add_timestamp:
-    # Write the updated content back to the log file
-    with open(LOG_FILE_PATH, "w") as file:
-        file.write(content)
+# Write the updated content back to the log file
+with open(LOG_FILE_PATH, "w") as file:
+    file.write(content)
 
-    ###################
-    ## AS OF RIGHT HERE, THE TIMESTAMP IS READY TO GO (E.G. "4:55 PM -")
-    ###################
+###################
+## AS OF RIGHT HERE, THE TIMESTAMP IS READY TO GO (E.G. "4:55 PM -")
+###################
 
-    # run shell command 'keyboardmaestro "Thought log entry"'
-    subprocess.run(
-        [
-            "/usr/bin/osascript",
-            "-e",
-            'tell application "Keyboard Maestro Engine" to do script "Thought log entry"',
-        ]
-    )
-else:
-    # Still focus VS Code to show the empty timestamp, but don't add new one or trigger KM
-    print("Empty timestamp detected - focusing VS Code without adding new timestamp")
-    # Focus VS Code to bring attention to the empty timestamp
-    subprocess.run(["open", "-a", "Visual Studio Code", LOG_FILE_PATH])
+# run shell command 'keyboardmaestro "Thought log entry"'
+subprocess.run(
+    [
+        "/usr/bin/osascript",
+        "-e",
+        'tell application "Keyboard Maestro Engine" to do script "Thought log entry"',
+    ]
+)
