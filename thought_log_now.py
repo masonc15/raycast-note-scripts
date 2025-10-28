@@ -56,18 +56,33 @@ if header_match:
     first_line = remaining_content.split('\n')[0] if remaining_content else ""
 
     if re.match(empty_timestamp_pattern, first_line.strip()):  # Check if first timestamp is empty
-        # Delete the empty timestamp line and its 3 newlines, then add new timestamp
-        lines = remaining_content.split('\n', 3)  # Split into: [empty_timestamp, '', '', rest...]
-        if len(lines) >= 4:
-            # Rejoin from index 3 onward (skipping timestamp + 2 blank lines, keeping the rest)
-            remaining_content = '\n'.join(lines[3:])
-        else:
-            # If less than 4 parts, just clear remaining content (edge case)
-            remaining_content = ''
+        # Delete ALL consecutive empty timestamps at the top
+        lines = remaining_content.split('\n')
+        lines_to_skip = 0
+
+        # Count how many empty timestamp blocks to remove (each is 3 lines: timestamp + 2 blank lines)
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            if re.match(empty_timestamp_pattern, line):
+                # This is an empty timestamp, skip it and the next 2 blank lines
+                lines_to_skip += 3
+                i += 3
+            else:
+                # Found a non-empty line, stop
+                break
+
+        # Rejoin from the point where non-empty content begins
+        remaining_content = '\n'.join(lines[lines_to_skip:]) if lines_to_skip < len(lines) else ''
 
         # Insert the new timestamp right after the header
         content = content[:header_end] + timestamp + remaining_content
-        print("Replaced empty timestamp with new one")
+
+        num_removed = lines_to_skip // 3
+        if num_removed == 1:
+            print("Replaced empty timestamp with new one")
+        else:
+            print(f"Replaced {num_removed} empty timestamps with new one")
     else:
         # Insert the new timestamp right after the header
         content = content[:header_end] + timestamp + remaining_content
