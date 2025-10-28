@@ -75,6 +75,9 @@ if header_match:
         # Rejoin from the point where non-empty content begins
         remaining_content = '\n'.join(lines[lines_to_skip:]) if lines_to_skip < len(lines) else ''
 
+        # Strip any leading newlines since timestamp already includes proper spacing
+        remaining_content = remaining_content.lstrip('\n')
+
         # Insert the new timestamp right after the header
         content = content[:header_end] + timestamp + remaining_content
 
