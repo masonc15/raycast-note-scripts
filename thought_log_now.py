@@ -9,27 +9,62 @@
 # @raycast.icon 📓
 
 # Documentation:
-# @raycast.description Opens thought log text file in VS Code with timestamp for immediate entry.
-# @raycast.author masonc789
-# @raycast.authorURL https://raycast.com/masonc789
+# @raycast.description Opens thought log in Zed at a fresh timestamp for immediate entry.
+# @raycast.author Colin Mason
 
-import subprocess
-from datetime import datetime
 import os
 import re
+import shutil
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Constants
-LOG_FILE_PATH = "/Users/colin/Dropbox (Maestral)/Daily Notes/thought log.txt"
+LOG_FILE_PATH = Path(
+    os.environ.get(
+        "THOUGHT_LOG_PATH",
+        "/Users/colin/Dropbox (Maestral)/Daily Notes/thought log.txt",
+    )
+).expanduser()
+NOTES_PATH = Path(
+    os.environ.get("DAILY_NOTES_PATH", str(LOG_FILE_PATH.parent))
+).expanduser()
+ZED_CANDIDATES = (
+    "/opt/homebrew/bin/zed",
+    "/Applications/Zed.app/Contents/MacOS/cli",
+    "/usr/local/bin/zed",
+)
+NOTES_TZ = ZoneInfo("America/New_York")
+
+
+def find_zed_binary():
+    """Find Zed without depending on the sparse PATH used by GUI launchers."""
+    configured = os.environ.get("ZED_CLI")
+    if configured:
+        return configured
+
+    from_path = shutil.which("zed")
+    if from_path:
+        return from_path
+
+    for candidate in ZED_CANDIDATES:
+        if os.path.exists(candidate):
+            return candidate
+
+    raise FileNotFoundError("Could not find the Zed CLI")
 
 # Get the current date and time
-current_date = datetime.now().strftime("%-m-%d-%y")
-current_time = datetime.now().strftime("%-I:%M %p")
+now = datetime.now(NOTES_TZ)
+current_date = now.strftime("%-m-%d-%y")
+current_time = now.strftime("%-I:%M %p")
 header = f"{current_date}\n---\n"
 timestamp = f"{current_time} - \n\n\n"
 
 # Read the existing log file
-if os.path.exists(LOG_FILE_PATH):
-    with open(LOG_FILE_PATH, "r") as file:
+if LOG_FILE_PATH.exists():
+    with LOG_FILE_PATH.open("r") as file:
         content = file.read()
 else:
     content = ""
@@ -94,18 +129,28 @@ else:
     content = header + timestamp + content
 
 # Write the updated content back to the log file
-with open(LOG_FILE_PATH, "w") as file:
+with LOG_FILE_PATH.open("w") as file:
     file.write(content)
 
-###################
-## AS OF RIGHT HERE, THE TIMESTAMP IS READY TO GO (E.G. "4:55 PM -")
-###################
+# The new timestamp is always the first line after today's header. Passing the
+# directory first keeps the file attached to a real Zed worktree, and passing
+# the position focuses the already-restored right-hand thought-log pane.
+updated_header = date_header_pattern.search(content)
+if updated_header is None:
+    print("Could not locate the new thought-log timestamp", file=sys.stderr)
+    raise SystemExit(1)
 
-# run shell command 'keyboardmaestro "Thought log entry"'
-subprocess.run(
-    [
-        "/usr/bin/osascript",
-        "-e",
-        'tell application "Keyboard Maestro Engine" to do script "Thought log entry"',
-    ]
-)
+timestamp_line = content.count("\n", 0, updated_header.end()) + 1
+
+try:
+    subprocess.run(
+        [
+            find_zed_binary(),
+            str(NOTES_PATH),
+            f"{LOG_FILE_PATH}:{timestamp_line}",
+        ],
+        check=True,
+    )
+except (FileNotFoundError, subprocess.CalledProcessError) as error:
+    print(f"Could not open thought log in Zed: {error}", file=sys.stderr)
+    raise SystemExit(1) from error
