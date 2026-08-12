@@ -12,10 +12,10 @@
 # Documentation:
 # @raycast.description Adds a task to the "later" section of the current day's daily note. Use '-b' at the end to add to the bottom.
 # @raycast.author masonc789
-# @raycast.authorURL https://raycast.com/masonc789
+# @raycast.authorURL https://github.com/masonc15
 
-import sys
 import os
+import sys
 from datetime import datetime
 
 
