@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S LC_ALL=en_US.UTF-8 python3
 
 # Required parameters:
 # @raycast.schemaVersion 1
