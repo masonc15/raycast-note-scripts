@@ -250,15 +250,46 @@ def close_completed_task(task_id: str, token: str):
     todoist_request("POST", f"{TODOIST_API}/tasks/{task_id}/close", token)
 
 
+def log_completed_via_rest(task_name: str, token: str):
+    """
+    Create a due-today task, then close it, using REST.
+    """
+    created = todoist_request(
+        "POST",
+        f"{TODOIST_API}/tasks",
+        token,
+        payload={"content": task_name, "due_string": "today"},
+    )
+    if not isinstance(created, dict) or not created.get("id"):
+        raise RuntimeError("create task returned no id")
+    close_completed_task(created["id"], token)
+
+
 def log_completed_task_to_todoist(task_name: str):
     """
     Record the task as completed today in Todoist.
 
-    Uses the Sync API (one request: add due today, then close). Token comes
-    from the environment or `td`.
+    Uses the Sync API first (one request: add due today, then close). Falls
+    back to REST. Token comes from the environment or `td`.
     """
-    token = get_todoist_token()
-    log_completed_via_sync(task_name, token)
+    errors = []
+
+    try:
+        token = get_todoist_token()
+    except Exception as error:
+        raise RuntimeError(f"token: {error}") from error
+
+    for name, action in (
+        ("sync", log_completed_via_sync),
+        ("rest", log_completed_via_rest),
+    ):
+        try:
+            action(task_name, token)
+            return
+        except Exception as error:
+            errors.append(f"{name}: {error}")
+
+    raise RuntimeError("; ".join(errors))
 
 
 def with_todoist_status(message: str, todoist_error):
