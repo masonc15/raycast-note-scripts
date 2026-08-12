@@ -265,29 +265,73 @@ def log_completed_via_rest(task_name: str, token: str):
     close_completed_task(created["id"], token)
 
 
+def log_completed_via_td(task_name: str):
+    """
+    Create a due-today task and complete it with the official `td` CLI.
+    """
+    td = find_td()
+    if not td:
+        raise RuntimeError("td is not installed")
+
+    add = subprocess.run(
+        [td, "--no-spinner", "task", "add", task_name, "--due", "today", "--json"],
+        capture_output=True,
+        text=True,
+        timeout=HTTP_TIMEOUT,
+    )
+    if add.returncode != 0:
+        detail = (add.stderr or add.stdout or "td task add failed").strip()
+        raise RuntimeError(detail)
+
+    try:
+        created = json.loads(add.stdout)
+        task_id = created.get("id")
+    except json.JSONDecodeError as error:
+        raise RuntimeError("td task add returned non-JSON") from error
+    if not task_id:
+        raise RuntimeError("td task add returned no id")
+
+    complete = subprocess.run(
+        [td, "--no-spinner", "task", "complete", f"id:{task_id}"],
+        capture_output=True,
+        text=True,
+        timeout=HTTP_TIMEOUT,
+    )
+    if complete.returncode != 0:
+        detail = (complete.stderr or complete.stdout or "td task complete failed").strip()
+        raise RuntimeError(detail)
+
+
 def log_completed_task_to_todoist(task_name: str):
     """
     Record the task as completed today in Todoist.
 
     Uses the Sync API first (one request: add due today, then close). Falls
-    back to REST. Token comes from the environment or `td`.
+    back to REST, then to `td`. Token comes from the environment or `td`.
     """
     errors = []
 
     try:
         token = get_todoist_token()
     except Exception as error:
-        raise RuntimeError(f"token: {error}") from error
+        token = None
+        errors.append(f"token: {error}")
+    else:
+        for name, action in (
+            ("sync", log_completed_via_sync),
+            ("rest", log_completed_via_rest),
+        ):
+            try:
+                action(task_name, token)
+                return
+            except Exception as error:
+                errors.append(f"{name}: {error}")
 
-    for name, action in (
-        ("sync", log_completed_via_sync),
-        ("rest", log_completed_via_rest),
-    ):
-        try:
-            action(task_name, token)
-            return
-        except Exception as error:
-            errors.append(f"{name}: {error}")
+    try:
+        log_completed_via_td(task_name)
+        return
+    except Exception as error:
+        errors.append(f"td: {error}")
 
     raise RuntimeError("; ".join(errors))
 
