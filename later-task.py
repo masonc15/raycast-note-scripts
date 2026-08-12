@@ -116,7 +116,16 @@ if __name__ == "__main__":
         sys.exit(1)
 
     note_path = get_daily_note_path()
-    add_to_later_section(task_name, note_path, add_to_bottom)
+
+    if not os.path.exists(note_path):
+        print(f"Daily note doesn't exist yet: {note_path}")
+        sys.exit(1)
+
+    try:
+        add_to_later_section(task_name, note_path, add_to_bottom)
+    except ValueError:
+        print(f"Daily note exists but has no 'later' section: {note_path}")
+        sys.exit(1)
 
     print(
         f"Added task '{task_name}' to {'bottom' if add_to_bottom else 'top'} of later section in daily note."
