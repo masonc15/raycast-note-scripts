@@ -10,15 +10,20 @@
 # @raycast.argument1 { "type": "text", "placeholder": "task", "optional": true }
 
 # Documentation:
-# @raycast.description Adds completed task along with timestamp to daily note .txt file
+# @raycast.description Adds a completed task to the daily note and Todoist
 # @raycast.author masonc789
 # @raycast.authorURL https://raycast.com/masonc789
 
-import sys
-from datetime import datetime
+import json
 import os
+import shutil
 import subprocess
-from urllib.parse import quote
+import sys
+import uuid
+from datetime import datetime
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, urlencode
+from urllib.request import Request, urlopen
 
 
 def get_daily_note_path():
@@ -117,6 +122,155 @@ def remove_one_thing_task():
     set_one_thing_task("")
 
 
+TODOIST_API = "https://api.todoist.com/api/v1"
+TD_BINARIES = ("td", "/opt/homebrew/bin/td", "/usr/local/bin/td")
+HTTP_TIMEOUT = 10
+
+
+def find_td():
+    """
+    Return an absolute path to the `td` CLI, or None if it is not installed.
+    """
+    for candidate in TD_BINARIES:
+        if os.path.isabs(candidate) and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+        found = shutil.which(candidate)
+        if found:
+            return found
+    return None
+
+
+def get_todoist_token():
+    """
+    Resolve a Todoist API token without embedding one in this public script.
+
+    Prefer the process environment (Raycast inherits launchd env). Fall back to
+    `td auth token view`, which reads the OS credential store.
+    """
+    for key in ("TODOIST_API_TOKEN", "TODOIST_API_KEY"):
+        token = os.environ.get(key, "").strip()
+        if token:
+            return token
+
+    td = find_td()
+    if not td:
+        raise RuntimeError("no TODOIST_API_TOKEN and td is not on PATH")
+
+    result = subprocess.run(
+        [td, "--no-spinner", "auth", "token", "view"],
+        capture_output=True,
+        text=True,
+        timeout=HTTP_TIMEOUT,
+    )
+    token = (result.stdout or "").strip()
+    if result.returncode != 0 or not token:
+        detail = (result.stderr or result.stdout or "td auth token view failed").strip()
+        raise RuntimeError(detail)
+    return token
+
+
+def todoist_request(method, url, token, payload=None, form=None):
+    """
+    Send an authenticated request to the Todoist API and return parsed JSON or None.
+    """
+    headers = {"Authorization": f"Bearer {token}"}
+    data = None
+    if form is not None:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+        data = urlencode(form).encode()
+    elif payload is not None:
+        headers["Content-Type"] = "application/json"
+        data = json.dumps(payload).encode()
+
+    request = Request(url, data=data, headers=headers, method=method)
+    try:
+        with urlopen(request, timeout=HTTP_TIMEOUT) as response:
+            body = response.read()
+    except HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:200].strip()
+        raise RuntimeError(f"HTTP {error.code} {detail}".strip()) from error
+    except URLError as error:
+        raise RuntimeError(f"network error: {error.reason}") from error
+
+    if not body:
+        return None
+    return json.loads(body.decode())
+
+
+def log_completed_via_sync(task_name: str, token: str):
+    """
+    Create a due-today task and close it in one Sync request.
+    """
+    temp_id = str(uuid.uuid4())
+    add_uuid = str(uuid.uuid4())
+    close_uuid = str(uuid.uuid4())
+    commands = [
+        {
+            "type": "item_add",
+            "temp_id": temp_id,
+            "uuid": add_uuid,
+            "args": {
+                "content": task_name,
+                "due": {"string": "today", "lang": "en"},
+            },
+        },
+        {
+            "type": "item_close",
+            "uuid": close_uuid,
+            "args": {"id": temp_id},
+        },
+    ]
+    result = todoist_request(
+        "POST",
+        f"{TODOIST_API}/sync",
+        token,
+        form={"commands": json.dumps(commands)},
+    )
+    if not isinstance(result, dict):
+        raise RuntimeError("empty Sync response")
+
+    status = result.get("sync_status") or {}
+    add_status = status.get(add_uuid)
+    close_status = status.get(close_uuid)
+    if add_status != "ok":
+        raise RuntimeError(f"item_add failed: {add_status}")
+    if close_status == "ok":
+        return
+
+    task_id = (result.get("temp_id_mapping") or {}).get(temp_id)
+    if not task_id:
+        raise RuntimeError(f"item_close failed: {close_status}")
+    close_completed_task(task_id, token)
+
+
+def close_completed_task(task_id: str, token: str):
+    """
+    Close an existing Todoist task by id.
+    """
+    todoist_request("POST", f"{TODOIST_API}/tasks/{task_id}/close", token)
+
+
+def log_completed_task_to_todoist(task_name: str):
+    """
+    Record the task as completed today in Todoist.
+
+    Uses the Sync API (one request: add due today, then close). Token comes
+    from the environment or `td`.
+    """
+    token = get_todoist_token()
+    log_completed_via_sync(task_name, token)
+
+
+def with_todoist_status(message: str, todoist_error):
+    """
+    Print a silent-mode HUD line that includes the Todoist outcome.
+    """
+    if todoist_error is None:
+        print(f"{message} Logged in Todoist.")
+    else:
+        print(f"{message} Todoist failed: {todoist_error}")
+
+
 if __name__ == "__main__":
     task_name = " ".join(sys.argv[1:]).strip()
     daily_note_path = get_daily_note_path()
@@ -130,8 +284,12 @@ if __name__ == "__main__":
             task_name, task_line_index = tasks[0]  # Get the topmost task
             remove_task_from_now(daily_note_path, task_line_index)
             append_completed_task_to_daily_note(task_name, daily_note_path)
-            print(f"Moved '{task_name}' from 'now' to 'done'.")
-            
+            todoist_error = None
+            try:
+                log_completed_task_to_todoist(task_name)
+            except Exception as error:
+                todoist_error = error
+
             # Check if there are more tasks in the 'now' section
             remaining_tasks = get_tasks_from_now(daily_note_path)
             if remaining_tasks:
@@ -139,9 +297,19 @@ if __name__ == "__main__":
                 set_one_thing_task(next_task)
             else:
                 remove_one_thing_task()
+            with_todoist_status(
+                f"Moved '{task_name}' from 'now' to 'done'.", todoist_error
+            )
         except ValueError as e:
             print(e)
             sys.exit(1)
     else:
         append_completed_task_to_daily_note(task_name, daily_note_path)
-        print(f"Task '{task_name}' added to daily note.")
+        todoist_error = None
+        try:
+            log_completed_task_to_todoist(task_name)
+        except Exception as error:
+            todoist_error = error
+        with_todoist_status(
+            f"Task '{task_name}' added to daily note.", todoist_error
+        )
