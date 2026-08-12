@@ -76,6 +76,56 @@ date_header_pattern = re.compile(
     re.MULTILINE
 )
 
+
+def clean_empty_timestamps_from_section(section_content):
+    """Remove all empty timestamps from a single day's section."""
+    empty_ts_pattern = r'(\d{1,2}:\d{2} [AP]M\s*-\s*)\s*$'
+
+    lines = section_content.split('\n')
+    result_lines = []
+    count_removed = 0
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        if re.match(empty_ts_pattern, line.strip()):
+            count_removed += 1
+            i += 1
+            # Skip trailing blank lines (up to 3)
+            blanks_skipped = 0
+            while i < len(lines) and lines[i].strip() == '' and blanks_skipped < 3:
+                i += 1
+                blanks_skipped += 1
+        else:
+            result_lines.append(line)
+            i += 1
+
+    return '\n'.join(result_lines), count_removed
+
+
+def clean_previous_day_empty_timestamps(file_content):
+    """Find first day section and remove its empty timestamps."""
+    any_date_pattern = re.compile(r'^(\d{1,2}-\d{2}-\d{2})\n---\s*\n', re.MULTILINE)
+
+    match = any_date_pattern.search(file_content)
+    if not match:
+        return file_content, 0, None
+
+    previous_date = match.group(1)
+    section_start = match.end()
+
+    next_day_match = any_date_pattern.search(file_content, section_start)
+    section_end = next_day_match.start() if next_day_match else len(file_content)
+
+    section_content = file_content[section_start:section_end]
+    cleaned_section, count_removed = clean_empty_timestamps_from_section(section_content)
+
+    if count_removed > 0:
+        file_content = file_content[:section_start] + cleaned_section + file_content[section_end:]
+
+    return file_content, count_removed, previous_date
+
+
 # Check if today's date is already in the log file
 header_match = date_header_pattern.search(content)
 
@@ -126,6 +176,14 @@ if header_match:
         content = content[:header_end] + timestamp + remaining_content
 else:
     # Today's date doesn't exist - prepend new date header and timestamp
+    # First, clean up any empty timestamps from the previous day
+    content, removed_count, prev_date = clean_previous_day_empty_timestamps(content)
+    if removed_count > 0:
+        if removed_count == 1:
+            print(f"Cleaned 1 empty timestamp from {prev_date}")
+        else:
+            print(f"Cleaned {removed_count} empty timestamps from {prev_date}")
+
     content = header + timestamp + content
 
 # Write the updated content back to the log file

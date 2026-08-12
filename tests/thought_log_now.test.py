@@ -78,6 +78,33 @@ class ThoughtLogNowTests(unittest.TestCase):
             self.assertIn("Could not open thought log in Zed", result.stderr)
             self.assertTrue(log_path.exists())
 
+    def test_cleans_empty_timestamps_from_previous_day(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log_path = Path(directory) / "thought log.txt"
+            log_path.write_text(
+                "1-01-20\n"
+                "---\n"
+                "5:00 PM - \n"
+                "\n"
+                "\n"
+                "4:00 PM - A real entry\n"
+                "\n"
+                "\n"
+                "12-31-19\n"
+                "---\n"
+                "3:00 PM - \n"
+                "\n"
+                "\n"
+            )
+            result, log_path, _ = self.run_script(directory)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            text = log_path.read_text()
+            self.assertIn("Cleaned 1 empty timestamp from 1-01-20", result.stdout)
+            self.assertNotIn("5:00 PM -", text)
+            self.assertIn("4:00 PM - A real entry", text)
+            self.assertIn("3:00 PM -", text)
+
 
 if __name__ == "__main__":
     unittest.main()
