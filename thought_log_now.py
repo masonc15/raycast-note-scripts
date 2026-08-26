@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 LOG_FILE_PATH = Path(
     os.environ.get(
         "THOUGHT_LOG_PATH",
-        "/Users/colin/Dropbox (Maestral)/Daily Notes/thought log.txt",
+        "/Users/colin/Seshat Drive/Daily Notes/thought log.txt",
     )
 ).expanduser()
 NOTES_PATH = Path(

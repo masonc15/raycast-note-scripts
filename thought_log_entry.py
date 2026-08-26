@@ -19,7 +19,7 @@ from datetime import datetime
 import os
 
 # Constants
-LOG_FILE_PATH = "/Users/colin/Dropbox (Maestral)/Daily Notes/thought log.txt"
+LOG_FILE_PATH = "/Users/colin/Seshat Drive/Daily Notes/thought log.txt"
 
 # Get the current date and time
 current_date = datetime.now().strftime("%-m-%d-%y")
