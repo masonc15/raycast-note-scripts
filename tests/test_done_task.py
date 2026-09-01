@@ -1,5 +1,6 @@
 import importlib.util
 import io
+import json
 import subprocess
 import sys
 import tempfile
@@ -175,6 +176,72 @@ print(" ".join(str(name in sys.modules) for name in (
         self.assertEqual("/usr/bin/osascript", fallback_command[0])
         self.assertIn("finished task", fallback_command)
         self.assertIn("Error: network unavailable", fallback_command)
+
+    def test_sync_task_has_raycast_done_label(self):
+        done_task = load_done_task()
+        captured_commands = []
+
+        def sync_response(method, url, token, form):
+            commands = json.loads(form["commands"])
+            captured_commands.extend(commands)
+            return {"sync_status": {command["uuid"]: "ok" for command in commands}}
+
+        with patch.object(done_task, "todoist_request", side_effect=sync_response):
+            done_task.log_completed_via_sync("finished task", "token")
+
+        add_command = next(
+            command for command in captured_commands if command["type"] == "item_add"
+        )
+        self.assertEqual(
+            [done_task.TODOIST_LABEL],
+            add_command["args"]["labels"],
+        )
+
+    def test_rest_task_has_raycast_done_label(self):
+        done_task = load_done_task()
+        created_task = {"id": "task-id"}
+
+        with patch.object(
+            done_task,
+            "todoist_request",
+            side_effect=(created_task, None),
+        ) as request:
+            done_task.log_completed_via_rest("finished task", "token")
+
+        create_call = request.call_args_list[0]
+        self.assertEqual(
+            [done_task.TODOIST_LABEL],
+            create_call.kwargs["payload"]["labels"],
+        )
+
+    def test_td_task_has_raycast_done_label(self):
+        done_task = load_done_task()
+        created = subprocess.CompletedProcess(
+            ["td", "task", "add"],
+            0,
+            stdout='{"id": "task-id"}',
+            stderr="",
+        )
+        completed = subprocess.CompletedProcess(
+            ["td", "task", "complete"],
+            0,
+            stdout="",
+            stderr="",
+        )
+
+        with (
+            patch.object(done_task, "find_td", return_value="/fake/td"),
+            patch.object(
+                done_task.subprocess,
+                "run",
+                side_effect=(created, completed),
+            ) as run,
+        ):
+            done_task.log_completed_via_td("finished task")
+
+        add_command = run.call_args_list[0].args[0]
+        label_option = add_command.index("--labels")
+        self.assertEqual(done_task.TODOIST_LABEL, add_command[label_option + 1])
 
 
 if __name__ == "__main__":

@@ -128,6 +128,7 @@ def remove_one_thing_task():
 
 
 TODOIST_API = "https://api.todoist.com/api/v1"
+TODOIST_LABEL = "raycast-done"
 TD_BINARIES = ("td", "/opt/homebrew/bin/td", "/usr/local/bin/td")
 HTTP_TIMEOUT = 10
 TODOIST_WORKER_ARGUMENT = "--todoist-worker"
@@ -235,6 +236,7 @@ def log_completed_via_sync(task_name: str, token: str):
             "args": {
                 "content": task_name,
                 "due": {"string": "today", "lang": "en"},
+                "labels": [TODOIST_LABEL],
             },
         },
         {
@@ -281,7 +283,11 @@ def log_completed_via_rest(task_name: str, token: str):
         "POST",
         f"{TODOIST_API}/tasks",
         token,
-        payload={"content": task_name, "due_string": "today"},
+        payload={
+            "content": task_name,
+            "due_string": "today",
+            "labels": [TODOIST_LABEL],
+        },
     )
     if not isinstance(created, dict) or not created.get("id"):
         raise RuntimeError("create task returned no id")
@@ -299,7 +305,18 @@ def log_completed_via_td(task_name: str):
         raise RuntimeError("td is not installed")
 
     add = subprocess.run(
-        [td, "--no-spinner", "task", "add", task_name, "--due", "today", "--json"],
+        [
+            td,
+            "--no-spinner",
+            "task",
+            "add",
+            task_name,
+            "--due",
+            "today",
+            "--labels",
+            TODOIST_LABEL,
+            "--json",
+        ],
         capture_output=True,
         text=True,
         timeout=HTTP_TIMEOUT,
