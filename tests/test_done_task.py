@@ -1,5 +1,7 @@
 import importlib.util
 import io
+import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -122,6 +124,26 @@ class DoneTaskTests(unittest.TestCase):
         self.assertIs(done_task.subprocess.DEVNULL, options["stderr"])
         self.assertTrue(options["close_fds"])
         self.assertTrue(options["start_new_session"])
+
+    def test_ui_import_skips_todoist_network_modules(self):
+        code = f"""
+import importlib.util
+import sys
+spec = importlib.util.spec_from_file_location("done_task", {str(SCRIPT_PATH)!r})
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+print(" ".join(str(name in sys.modules) for name in (
+    "json", "shutil", "urllib.request", "uuid"
+)))
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual("False False False False", result.stdout.strip())
 
 
 if __name__ == "__main__":

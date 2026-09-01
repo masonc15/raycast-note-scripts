@@ -14,16 +14,11 @@
 # @raycast.author masonc789
 # @raycast.authorURL https://raycast.com/masonc789
 
-import json
 import os
-import shutil
 import subprocess
 import sys
-import uuid
 from datetime import datetime
-from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode
-from urllib.request import Request, urlopen
+from urllib.parse import quote
 
 
 def get_daily_note_path():
@@ -145,6 +140,8 @@ def find_td():
     """
     Return an absolute path to the `td` CLI, or None if it is not installed.
     """
+    import shutil
+
     for candidate in TD_BINARIES:
         if os.path.isabs(candidate) and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
@@ -187,6 +184,11 @@ def todoist_request(method, url, token, payload=None, form=None):
     """
     Send an authenticated request to the Todoist API and return parsed JSON or None.
     """
+    import json
+    from urllib.error import HTTPError, URLError
+    from urllib.parse import urlencode
+    from urllib.request import Request, urlopen
+
     headers = {"Authorization": f"Bearer {token}"}
     data = None
     if form is not None:
@@ -215,6 +217,9 @@ def log_completed_via_sync(task_name: str, token: str):
     """
     Create a due-today task and close it in one Sync request.
     """
+    import json
+    import uuid
+
     temp_id = str(uuid.uuid4())
     add_uuid = str(uuid.uuid4())
     close_uuid = str(uuid.uuid4())
@@ -283,6 +288,8 @@ def log_completed_via_td(task_name: str):
     """
     Create a due-today task and complete it with the official `td` CLI.
     """
+    import json
+
     td = find_td()
     if not td:
         raise RuntimeError("td is not installed")
