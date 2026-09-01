@@ -456,14 +456,14 @@ def run_todoist_worker(task_name: str):
                 log_file.write(f"{timestamp} notification failed: {notification_error}\n")
 
 
-def with_todoist_status(message: str, todoist_error):
+def print_completion_status(task_name: str, todoist_error):
     """
-    Print a silent-mode HUD line that includes the Todoist queue outcome.
+    Print a concise completion message. Show only an immediate queue failure.
     """
     if todoist_error is None:
-        print(f"{message} Todoist queued.")
+        print(f"Completed: {task_name}")
     else:
-        print(f"{message} Todoist queue failed: {todoist_error}")
+        print(f"Completed locally: {task_name}. Todoist failed to start: {todoist_error}")
 
 
 def main(arguments=None):
@@ -499,9 +499,7 @@ def main(arguments=None):
                 set_one_thing_task(next_task)
             else:
                 remove_one_thing_task()
-            with_todoist_status(
-                f"Moved '{task_name}' from 'now' to 'done'.", todoist_error
-            )
+            print_completion_status(task_name, todoist_error)
         except ValueError as e:
             print(e)
             sys.exit(1)
@@ -512,9 +510,7 @@ def main(arguments=None):
             queue_completed_task_to_todoist(task_name)
         except Exception as error:
             todoist_error = error
-        with_todoist_status(
-            f"Task '{task_name}' added to daily note.", todoist_error
-        )
+        print_completion_status(task_name, todoist_error)
 
 
 if __name__ == "__main__":

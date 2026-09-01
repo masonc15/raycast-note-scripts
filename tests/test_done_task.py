@@ -37,7 +37,7 @@ class DoneTaskTests(unittest.TestCase):
 
             queue.assert_called_once_with("finished task")
             self.assertIn("finished task - ", note_path.read_text(encoding="utf-8"))
-            self.assertIn("Todoist queued.", output.getvalue())
+            self.assertEqual("Completed: finished task\n", output.getvalue())
 
     def test_top_now_task_queues_todoist_and_selects_next_task(self):
         done_task = load_done_task()
@@ -63,7 +63,7 @@ class DoneTaskTests(unittest.TestCase):
             note_text = note_path.read_text(encoding="utf-8")
             self.assertNotIn("\nfirst task\n", note_text)
             self.assertIn("first task - ", note_text)
-            self.assertIn("Todoist queued.", output.getvalue())
+            self.assertEqual("Completed: first task\n", output.getvalue())
 
     def test_todoist_queue_detaches_worker_output(self):
         done_task = load_done_task()
