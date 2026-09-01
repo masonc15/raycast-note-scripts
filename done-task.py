@@ -111,8 +111,18 @@ def set_one_thing_task(task_name: str):
         task_name (str): The name of the task to set.
     """
     encoded_task_name = quote(task_name)  # URL-encode the task name
-    command = f"open --background 'one-thing:?text={encoded_task_name}'"
-    subprocess.run(command, shell=True)
+    subprocess.Popen(
+        [
+            "/usr/bin/open",
+            "--background",
+            f"one-thing:?text={encoded_task_name}",
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        start_new_session=True,
+    )
 
 
 def remove_one_thing_task():

@@ -98,6 +98,31 @@ class DoneTaskTests(unittest.TestCase):
             self.assertIn("finished task", log_text)
             self.assertIn("network unavailable", log_text)
 
+    def test_one_thing_update_does_not_wait_for_open(self):
+        done_task = load_done_task()
+
+        with (
+            patch.object(
+                done_task.subprocess,
+                "run",
+                side_effect=AssertionError("waited for open"),
+            ),
+            patch.object(done_task.subprocess, "Popen") as popen,
+        ):
+            done_task.set_one_thing_task("next & final")
+
+        command = popen.call_args.args[0]
+        options = popen.call_args.kwargs
+        self.assertEqual(
+            ["/usr/bin/open", "--background", "one-thing:?text=next%20%26%20final"],
+            command,
+        )
+        self.assertIs(done_task.subprocess.DEVNULL, options["stdin"])
+        self.assertIs(done_task.subprocess.DEVNULL, options["stdout"])
+        self.assertIs(done_task.subprocess.DEVNULL, options["stderr"])
+        self.assertTrue(options["close_fds"])
+        self.assertTrue(options["start_new_session"])
+
 
 if __name__ == "__main__":
     unittest.main()
