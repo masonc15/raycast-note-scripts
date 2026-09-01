@@ -134,6 +134,10 @@ TODOIST_WORKER_ARGUMENT = "--todoist-worker"
 TODOIST_ERROR_LOG = os.path.expanduser(
     "~/Library/Logs/raycast-note-scripts/todoist-worker.log"
 )
+TERMINAL_NOTIFIER_BINARIES = (
+    "/opt/homebrew/bin/terminal-notifier",
+    "/usr/local/bin/terminal-notifier",
+)
 
 
 def find_td():
@@ -376,6 +380,60 @@ def queue_completed_task_to_todoist(task_name: str):
     )
 
 
+def notify_todoist_failure(task_name: str, error):
+    """
+    Show an immediate macOS notification for a background Todoist failure.
+    """
+    subtitle = f"Todoist failed: {task_name}"[:120]
+    message = f"Error: {error}"[:500]
+
+    for notifier in TERMINAL_NOTIFIER_BINARIES:
+        if not os.path.isfile(notifier) or not os.access(notifier, os.X_OK):
+            continue
+        result = subprocess.run(
+            [
+                notifier,
+                "-title",
+                "Done Task",
+                "-subtitle",
+                subtitle,
+                "-message",
+                message,
+                "-sound",
+                "default",
+                "-group",
+                "raycast-note-scripts.todoist-error",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            return
+
+    apple_script = """
+on run argv
+    display notification (item 2 of argv) with title "Done Task" subtitle ("Todoist failed: " & (item 1 of argv)) sound name "default"
+end run
+"""
+    result = subprocess.run(
+        [
+            "/usr/bin/osascript",
+            "-e",
+            apple_script,
+            task_name[:120],
+            message,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    if result.returncode == 0:
+        return
+
+    raise RuntimeError("terminal-notifier and osascript failed")
+
+
 def run_todoist_worker(task_name: str):
     """
     Log one completed task. Record failures because the worker has no HUD.
@@ -383,11 +441,19 @@ def run_todoist_worker(task_name: str):
     try:
         log_completed_task_to_todoist(task_name)
     except Exception as error:
+        notification_error = None
+        try:
+            notify_todoist_failure(task_name, error)
+        except Exception as notify_error:
+            notification_error = notify_error
+
         log_directory = os.path.dirname(TODOIST_ERROR_LOG)
         os.makedirs(log_directory, exist_ok=True)
         timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
         with open(TODOIST_ERROR_LOG, "a", encoding="utf-8") as log_file:
             log_file.write(f"{timestamp} {task_name!r}: {error}\n")
+            if notification_error is not None:
+                log_file.write(f"{timestamp} notification failed: {notification_error}\n")
 
 
 def with_todoist_status(message: str, todoist_error):

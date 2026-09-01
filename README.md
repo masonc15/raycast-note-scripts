@@ -6,7 +6,7 @@ My collection of Raycast script commands for managing and manipulating tasks wit
 
 ### `done-task.py`
 
-Adds completed tasks with a timestamp to the "done" section of the daily note .txt file. It also queues a completed Todoist record in a detached worker, so the network request does not delay the Raycast confirmation. Worker failures are written to `~/Library/Logs/raycast-note-scripts/todoist-worker.log`. If no task is provided, it moves the topmost task from the "now" section to the "done" section and updates the One Thing menubar app.
+Adds completed tasks with a timestamp to the "done" section of the daily note .txt file. It also queues a completed Todoist record in a detached worker, so the network request does not delay the Raycast confirmation. A Todoist failure sends an immediate macOS notification and is written to `~/Library/Logs/raycast-note-scripts/todoist-worker.log`. If no task is provided, it moves the topmost task from the "now" section to the "done" section and updates the One Thing menubar app.
 
 ### `now-task.py`
 
