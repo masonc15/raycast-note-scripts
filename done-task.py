@@ -125,6 +125,10 @@ def remove_one_thing_task():
 TODOIST_API = "https://api.todoist.com/api/v1"
 TD_BINARIES = ("td", "/opt/homebrew/bin/td", "/usr/local/bin/td")
 HTTP_TIMEOUT = 10
+TODOIST_WORKER_ARGUMENT = "--todoist-worker"
+TODOIST_ERROR_LOG = os.path.expanduser(
+    "~/Library/Logs/raycast-note-scripts/todoist-worker.log"
+)
 
 
 def find_td():
@@ -336,18 +340,58 @@ def log_completed_task_to_todoist(task_name: str):
     raise RuntimeError("; ".join(errors))
 
 
+def queue_completed_task_to_todoist(task_name: str):
+    """
+    Start Todoist logging in a detached process so Raycast can return at once.
+    """
+    subprocess.Popen(
+        [
+            sys.executable or "/usr/bin/python3",
+            os.path.abspath(__file__),
+            TODOIST_WORKER_ARGUMENT,
+            task_name,
+        ],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        start_new_session=True,
+    )
+
+
+def run_todoist_worker(task_name: str):
+    """
+    Log one completed task. Record failures because the worker has no HUD.
+    """
+    try:
+        log_completed_task_to_todoist(task_name)
+    except Exception as error:
+        log_directory = os.path.dirname(TODOIST_ERROR_LOG)
+        os.makedirs(log_directory, exist_ok=True)
+        timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+        with open(TODOIST_ERROR_LOG, "a", encoding="utf-8") as log_file:
+            log_file.write(f"{timestamp} {task_name!r}: {error}\n")
+
+
 def with_todoist_status(message: str, todoist_error):
     """
-    Print a silent-mode HUD line that includes the Todoist outcome.
+    Print a silent-mode HUD line that includes the Todoist queue outcome.
     """
     if todoist_error is None:
-        print(f"{message} Logged in Todoist.")
+        print(f"{message} Todoist queued.")
     else:
-        print(f"{message} Todoist failed: {todoist_error}")
+        print(f"{message} Todoist queue failed: {todoist_error}")
 
 
-if __name__ == "__main__":
-    task_name = " ".join(sys.argv[1:]).strip()
+def main(arguments=None):
+    arguments = sys.argv[1:] if arguments is None else arguments
+    if arguments[:1] == [TODOIST_WORKER_ARGUMENT]:
+        task_name = " ".join(arguments[1:]).strip()
+        if task_name:
+            run_todoist_worker(task_name)
+        return
+
+    task_name = " ".join(arguments).strip()
     daily_note_path = get_daily_note_path()
 
     if not task_name:
@@ -361,7 +405,7 @@ if __name__ == "__main__":
             append_completed_task_to_daily_note(task_name, daily_note_path)
             todoist_error = None
             try:
-                log_completed_task_to_todoist(task_name)
+                queue_completed_task_to_todoist(task_name)
             except Exception as error:
                 todoist_error = error
 
@@ -382,9 +426,13 @@ if __name__ == "__main__":
         append_completed_task_to_daily_note(task_name, daily_note_path)
         todoist_error = None
         try:
-            log_completed_task_to_todoist(task_name)
+            queue_completed_task_to_todoist(task_name)
         except Exception as error:
             todoist_error = error
         with_todoist_status(
             f"Task '{task_name}' added to daily note.", todoist_error
         )
+
+
+if __name__ == "__main__":
+    main()
