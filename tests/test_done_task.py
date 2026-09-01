@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -23,6 +24,7 @@ def load_done_task():
 class DoneTaskTests(unittest.TestCase):
     def test_entered_task_queues_todoist_after_note_write(self):
         done_task = load_done_task()
+        completed_at = datetime(2026, 9, 1, 15, 42)
 
         with tempfile.TemporaryDirectory() as directory:
             note_path = Path(directory) / "daily-note.txt"
@@ -34,14 +36,21 @@ class DoneTaskTests(unittest.TestCase):
                 patch.object(done_task, "queue_completed_task_to_todoist") as queue,
                 redirect_stdout(output),
             ):
-                done_task.main(["finished task"])
+                done_task.main(["finished task"], completed_at=completed_at)
 
             queue.assert_called_once_with("finished task")
-            self.assertIn("finished task - ", note_path.read_text(encoding="utf-8"))
-            self.assertEqual("Completed: finished task\n", output.getvalue())
+            self.assertEqual(
+                "done\nfinished task - 9-01-26 3:42 PM\n",
+                note_path.read_text(encoding="utf-8"),
+            )
+            self.assertEqual(
+                "Completed at 3:42 PM: finished task\n",
+                output.getvalue(),
+            )
 
     def test_top_now_task_queues_todoist_and_selects_next_task(self):
         done_task = load_done_task()
+        completed_at = datetime(2026, 9, 1, 9, 7)
 
         with tempfile.TemporaryDirectory() as directory:
             note_path = Path(directory) / "daily-note.txt"
@@ -57,14 +66,17 @@ class DoneTaskTests(unittest.TestCase):
                 patch.object(done_task, "set_one_thing_task") as set_one_thing,
                 redirect_stdout(output),
             ):
-                done_task.main([])
+                done_task.main([], completed_at=completed_at)
 
             queue.assert_called_once_with("first task")
             set_one_thing.assert_called_once_with("second task")
             note_text = note_path.read_text(encoding="utf-8")
             self.assertNotIn("\nfirst task\n", note_text)
-            self.assertIn("first task - ", note_text)
-            self.assertEqual("Completed: first task\n", output.getvalue())
+            self.assertIn("first task - 9-01-26 9:07 AM\n", note_text)
+            self.assertEqual(
+                "Completed at 9:07 AM: first task\n",
+                output.getvalue(),
+            )
 
     def test_todoist_queue_detaches_worker_output(self):
         done_task = load_done_task()

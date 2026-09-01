@@ -34,18 +34,21 @@ def get_daily_note_path():
     return os.path.join(daily_note_directory, daily_note_filename)
 
 
-def append_completed_task_to_daily_note(task_name: str, note_path: str):
+def append_completed_task_to_daily_note(
+    task_name: str, note_path: str, completed_at: datetime
+):
     """
     Appends the name of a completed task and its timestamp to a daily note file.
 
     Args:
         task_name (str): The name of the completed task.
         note_path (str): The path to the daily note file.
+        completed_at (datetime): The time when the task was completed.
 
     Raises:
         FileNotFoundError: If the daily note file does not exist.
     """
-    timestamp = datetime.now().strftime("%-m-%d-%y %-I:%M %p")
+    timestamp = completed_at.strftime("%-m-%d-%y %-I:%M %p")
     with open(note_path, "a") as file:
         file.write(f"{task_name} - {timestamp}\n")
 
@@ -473,17 +476,21 @@ def run_todoist_worker(task_name: str):
                 log_file.write(f"{timestamp} notification failed: {notification_error}\n")
 
 
-def print_completion_status(task_name: str, todoist_error):
+def print_completion_status(task_name: str, todoist_error, completed_at: datetime):
     """
     Print a concise completion message. Show only an immediate queue failure.
     """
+    completed_time = completed_at.strftime("%-I:%M %p")
     if todoist_error is None:
-        print(f"Completed: {task_name}")
+        print(f"Completed at {completed_time}: {task_name}")
     else:
-        print(f"Completed locally: {task_name}. Todoist failed to start: {todoist_error}")
+        print(
+            f"Completed locally at {completed_time}: {task_name}. "
+            f"Todoist failed to start: {todoist_error}"
+        )
 
 
-def main(arguments=None):
+def main(arguments=None, completed_at=None):
     arguments = sys.argv[1:] if arguments is None else arguments
     if arguments[:1] == [TODOIST_WORKER_ARGUMENT]:
         task_name = " ".join(arguments[1:]).strip()
@@ -491,6 +498,7 @@ def main(arguments=None):
             run_todoist_worker(task_name)
         return
 
+    completed_at = completed_at or datetime.now()
     task_name = " ".join(arguments).strip()
     daily_note_path = get_daily_note_path()
 
@@ -502,7 +510,9 @@ def main(arguments=None):
             
             task_name, task_line_index = tasks[0]  # Get the topmost task
             remove_task_from_now(daily_note_path, task_line_index)
-            append_completed_task_to_daily_note(task_name, daily_note_path)
+            append_completed_task_to_daily_note(
+                task_name, daily_note_path, completed_at
+            )
             todoist_error = None
             try:
                 queue_completed_task_to_todoist(task_name)
@@ -516,18 +526,18 @@ def main(arguments=None):
                 set_one_thing_task(next_task)
             else:
                 remove_one_thing_task()
-            print_completion_status(task_name, todoist_error)
+            print_completion_status(task_name, todoist_error, completed_at)
         except ValueError as e:
             print(e)
             sys.exit(1)
     else:
-        append_completed_task_to_daily_note(task_name, daily_note_path)
+        append_completed_task_to_daily_note(task_name, daily_note_path, completed_at)
         todoist_error = None
         try:
             queue_completed_task_to_todoist(task_name)
         except Exception as error:
             todoist_error = error
-        print_completion_status(task_name, todoist_error)
+        print_completion_status(task_name, todoist_error, completed_at)
 
 
 if __name__ == "__main__":
